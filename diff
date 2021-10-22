@@ -12,7 +12,7 @@ index 0226329..1d87911 100644
  add_definitions(-DUSE_OPENCV)
  
 diff --git a/main.cpp b/main.cpp
-index 0b7fc4e..40c6c68 100644
+index 0b7fc4e..f14ed44 100644
 --- a/main.cpp
 +++ b/main.cpp
 @@ -29,13 +29,15 @@
@@ -43,7 +43,7 @@ index 0b7fc4e..40c6c68 100644
  const std::string INPUT_FILE = "../boy.mp4";                    /* Image or movie file */
  //const std::string INPUT_FILE = "../capoeira.mp4";             /* Image or movie file */
  //const std::string INPUT_FILE = "../people-detection.mp4";     /* Image or movie file */
-@@ -557,14 +560,31 @@ int main(int argc, char *argv[]) {
+@@ -557,15 +560,33 @@ int main(int argc, char *argv[]) {
      ie::CNNNetwork net_pd;
      net_pd = ie.ReadNetwork(MODEL_POSE_DET+".xml", MODEL_POSE_DET+".bin");
      net_pd.setBatchSize(1);
@@ -68,15 +68,17 @@ index 0b7fc4e..40c6c68 100644
 +      InferenceEngine::OutputsDataMap outputInfo = net_pd.getOutputsInfo();
 +
 +      auto outputBlobsIt = outputInfo.begin();
-+      oname_pd.push_back(outputBlobsIt->first);
-+      oname_pd.push_back((++outputBlobsIt)->first);
++      oname_pd.push_back(outputBlobsIt->first);     // classificators
++      oname_pd.push_back((++outputBlobsIt)->first); // regressors
 +    }
 +#endif
 +    
      for (auto& oname : oname_pd) {
++        std::cerr << oname << std::endl;
          ie::DataPtr output_info = net_pd.getOutputsInfo()[oname];
          output_info->setPrecision(ie::Precision::FP32);
-@@ -579,15 +599,32 @@ int main(int argc, char *argv[]) {
+     }
+@@ -579,16 +600,34 @@ int main(int argc, char *argv[]) {
      ie::CNNNetwork net_lm;
      net_lm = ie.ReadNetwork(MODEL_LM_DET + ".xml", MODEL_LM_DET + ".bin");
      net_lm.setBatchSize(1);
@@ -101,16 +103,18 @@ index 0b7fc4e..40c6c68 100644
 +    {
 +      InferenceEngine::OutputsDataMap outputInfo = net_lm.getOutputsInfo();
 +      auto outputBlobsIt = outputInfo.begin();
-+      oname_lm.push_back(outputBlobsIt->first);
-+      oname_lm.push_back((++outputBlobsIt)->first);
-+      oname_lm.push_back((++outputBlobsIt)->first);
++      oname_lm.push_back(outputBlobsIt->first);     // ld_3d
++      oname_lm.push_back((++outputBlobsIt)->first); // output_poseflag
++      oname_lm.push_back((++outputBlobsIt)->first); // output_segmentation
 +    }
 +
 +#endif
      for (auto& oname : oname_lm) {
++        std::cerr << oname << std::endl;
          ie::DataPtr output_info = net_lm.getOutputsInfo()[oname];
          output_info->setPrecision(ie::Precision::FP32);
-@@ -688,10 +725,15 @@ int main(int argc, char *argv[]) {
+     }
+@@ -688,10 +727,15 @@ int main(int argc, char *argv[]) {
              ireq_lm.Infer();                                                // Landmark detection
              end = std::chrono::system_clock::now();
              time_lm = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

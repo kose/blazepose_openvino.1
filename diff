@@ -12,7 +12,7 @@ index 0226329..1d87911 100644
  add_definitions(-DUSE_OPENCV)
  
 diff --git a/main.cpp b/main.cpp
-index 0b7fc4e..56bd8ec 100644
+index 0b7fc4e..ab8223d 100644
 --- a/main.cpp
 +++ b/main.cpp
 @@ -26,16 +26,17 @@
@@ -66,8 +66,8 @@ index 0b7fc4e..56bd8ec 100644
 +      InferenceEngine::OutputsDataMap outputInfo = net_pd.getOutputsInfo();
 +
 +      auto outputBlobsIt = outputInfo.begin();
-+      oname_pd.push_back(outputBlobsIt->first);     // classificators
-+      oname_pd.push_back((++outputBlobsIt)->first); // regressors
++      oname_pd.push_back(outputBlobsIt->first);
++      oname_pd.push_back((++outputBlobsIt)->first);
 +    }
 +    
      for (auto& oname : oname_pd) {
@@ -94,9 +94,9 @@ index 0b7fc4e..56bd8ec 100644
 +    {
 +      InferenceEngine::OutputsDataMap outputInfo = net_lm.getOutputsInfo();
 +      auto outputBlobsIt = outputInfo.begin();
-+      oname_lm.push_back(outputBlobsIt->first);     // ld_3d
-+      oname_lm.push_back((++outputBlobsIt)->first); // output_poseflag
-+      oname_lm.push_back((++outputBlobsIt)->first); // output_segmentation
++      oname_lm.push_back(outputBlobsIt->first);
++      oname_lm.push_back((++outputBlobsIt)->first);
++      oname_lm.push_back((++outputBlobsIt)->first);
 +    }
 +
      for (auto& oname : oname_lm) {

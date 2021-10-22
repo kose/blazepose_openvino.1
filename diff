@@ -12,57 +12,55 @@ index 0226329..1d87911 100644
  add_definitions(-DUSE_OPENCV)
  
 diff --git a/main.cpp b/main.cpp
-index 0b7fc4e..f14ed44 100644
+index 0b7fc4e..56bd8ec 100644
 --- a/main.cpp
 +++ b/main.cpp
-@@ -29,13 +29,15 @@
- const std::string MODEL_POSE_DET = "../pose_detection/128x128/FP32/pose_detection";
- const std::string MODEL_LM_DET   = "../pose_landmark_upper_body/256x256/FP32/pose_landmark_upper_body";
+@@ -26,16 +26,17 @@
+ #define CAM_INPUT      (3)
+ 
+ #ifndef FULL_POSE
+-const std::string MODEL_POSE_DET = "../pose_detection/128x128/FP32/pose_detection";
+-const std::string MODEL_LM_DET   = "../pose_landmark_upper_body/256x256/FP32/pose_landmark_upper_body";
++const std::string MODEL_POSE_DET = "/tmp/PINTO_model_zoo/053_BlazePose/07_openvino/openvino/pose_detection/128x128/FP16/pose_detection";
++const std::string MODEL_LM_DET   = "/tmp/PINTO_model_zoo/053_BlazePose/07_openvino/openvino/pose_landmark_upper_body/256x256/FP16/pose_landmark_upper_body";
++
  #else
 -const std::string MODEL_POSE_DET = "../pose_detection_full/128x128/FP16/pose_detection_full";
-+//const std::string MODEL_POSE_DET = "../pose_detection_full/128x128/FP16/pose_detection_full";
-+const std::string MODEL_POSE_DET = "/tmp/PINTO_model_zoo/053_BlazePose/01_pose_detection/saved_model_openvino/openvino/FP16/saved_model";
++const std::string MODEL_POSE_DET = "/tmp/PINTO_model_zoo/058_BlazePose_Full_Keypoints/01_Accurate/07_openvino/openvino/pose_detection_full/128x128/FP16/pose_detection_full";
    //Input Blob(s):
    //  BlobName:input, Shape:[1, 3, 128, 128], Precision:FP32
    //Output Blob(s):
    //  BlobName:StatefulPartitionedCall/functional_1/classificators/concat, Shape:[1, 896, 1], Precision:FP32
    //  BlobName:StatefulPartitionedCall/functional_1/regressors/concat, Shape:[1, 896, 8], Precision:FP32
 -const std::string MODEL_LM_DET   = "../pose_landmark_full_body/256x256/FP16/pose_landmark_full_body";
-+//const std::string MODEL_LM_DET   = "../pose_landmark_full_body/256x256/FP16/pose_landmark_full_body";
-+const std::string MODEL_LM_DET   = "/tmp/PINTO_model_zoo/053_BlazePose/03_pose_landmark_full_body/saved_model_openvino/openvino/FP16/saved_model";
++const std::string MODEL_LM_DET   = "/tmp/PINTO_model_zoo/058_BlazePose_Full_Keypoints/01_Accurate/07_openvino/openvino/pose_landmark_full_body/256x256/FP16/pose_landmark_full_body";
    //Input Blob(s):
    //  BlobName:input, Shape:[1, 3, 256, 256], Precision:FP32
    //Output Blob(s):
-@@ -45,7 +47,8 @@ const std::string MODEL_LM_DET   = "../pose_landmark_full_body/256x256/FP16/pose
+@@ -45,7 +46,8 @@ const std::string MODEL_LM_DET   = "../pose_landmark_full_body/256x256/FP16/pose
  #endif
  
  // INPUT_TYPE = { IMAGE_INPUT | VIDEO_INPUT | CAM_INPUT }
 -#define INPUT_TYPE    VIDEO_INPUT
-+//#define INPUT_TYPE    VIDEO_INPUT
++// #define INPUT_TYPE    VIDEO_INPUT
 +#define INPUT_TYPE    CAM_INPUT
  const std::string INPUT_FILE = "../boy.mp4";                    /* Image or movie file */
  //const std::string INPUT_FILE = "../capoeira.mp4";             /* Image or movie file */
  //const std::string INPUT_FILE = "../people-detection.mp4";     /* Image or movie file */
-@@ -557,15 +560,33 @@ int main(int argc, char *argv[]) {
+@@ -557,15 +559,24 @@ int main(int argc, char *argv[]) {
      ie::CNNNetwork net_pd;
      net_pd = ie.ReadNetwork(MODEL_POSE_DET+".xml", MODEL_POSE_DET+".bin");
      net_pd.setBatchSize(1);
 -    std::string input_name_pd = "input";                                                               // [1,3,128,128]
-+#if 0
-+    std::string input_name_pd = "input";
-+#else
 +    std::string input_name_pd = net_pd.getInputsInfo().begin()->first;
-+#endif    
 +   // [1,3,128,128]
      std::shared_ptr<ie::InputInfo> input_info_pd = net_pd.getInputsInfo()[input_name_pd];
      const ie::SizeVector idims_pd = input_info_pd->getTensorDesc().getDims();                          // 0,1,2,3 = N,C,H,W
      input_info_pd->setLayout(ie::Layout::NHWC);
      input_info_pd->setPrecision(ie::Precision::FP32);
  
-+#if 0
-     std::vector<std::string> oname_pd = { "StatefulPartitionedCall/functional_1/classificators/concat" ,    // [1,896,1]    tensor scores
-                                           "StatefulPartitionedCall/functional_1/regressors/concat" };       // [1,896,12]   tensor bboxes
-+#else
+-    std::vector<std::string> oname_pd = { "StatefulPartitionedCall/functional_1/classificators/concat" ,    // [1,896,1]    tensor scores
+-                                          "StatefulPartitionedCall/functional_1/regressors/concat" };       // [1,896,12]   tensor bboxes
 +    std::vector<std::string> oname_pd;
 +    {
 +      InferenceEngine::OutputsDataMap outputInfo = net_pd.getOutputsInfo();
@@ -71,34 +69,27 @@ index 0b7fc4e..f14ed44 100644
 +      oname_pd.push_back(outputBlobsIt->first);     // classificators
 +      oname_pd.push_back((++outputBlobsIt)->first); // regressors
 +    }
-+#endif
 +    
      for (auto& oname : oname_pd) {
 +        std::cerr << oname << std::endl;
          ie::DataPtr output_info = net_pd.getOutputsInfo()[oname];
          output_info->setPrecision(ie::Precision::FP32);
      }
-@@ -579,16 +600,34 @@ int main(int argc, char *argv[]) {
+@@ -579,16 +590,24 @@ int main(int argc, char *argv[]) {
      ie::CNNNetwork net_lm;
      net_lm = ie.ReadNetwork(MODEL_LM_DET + ".xml", MODEL_LM_DET + ".bin");
      net_lm.setBatchSize(1);
 -    std::string input_name_lm = "input";                                                                // [1,3,256,256]
-+#if 0
-+    std::string input_name_lm = "input";
-+#else
 +    std::string input_name_lm = net_lm.getInputsInfo().begin()->first;
-+#endif
 +    // [1,3,256,256]
      std::shared_ptr<ie::InputInfo> input_info_lm = net_lm.getInputsInfo()[input_name_lm];
      const ie::SizeVector idims_lm = input_info_lm ->getTensorDesc().getDims();                          // 0,1,2,3 = N,C,H,W
      input_info_lm->setLayout(ie::Layout::NHWC);
      input_info_lm->setPrecision(ie::Precision::FP32);
  
-+#if 0
-     std::vector<std::string> oname_lm = { "StatefulPartitionedCall/functional_1/output_segmentation/BiasAdd/Add",   // [1, 1, 128, 128]
-                                           "StatefulPartitionedCall/functional_1/tf_op_layer_Sigmoid/Sigmoid",       // [1, 1, 1, 1]      landmark flag ?
-                                           "StatefulPartitionedCall/functional_1/tf_op_layer_ld_3d/ld_3d" };         // [1, 124]          landmark
-+#else
+-    std::vector<std::string> oname_lm = { "StatefulPartitionedCall/functional_1/output_segmentation/BiasAdd/Add",   // [1, 1, 128, 128]
+-                                          "StatefulPartitionedCall/functional_1/tf_op_layer_Sigmoid/Sigmoid",       // [1, 1, 1, 1]      landmark flag ?
+-                                          "StatefulPartitionedCall/functional_1/tf_op_layer_ld_3d/ld_3d" };         // [1, 124]          landmark
 +    std::vector<std::string> oname_lm;
 +    {
 +      InferenceEngine::OutputsDataMap outputInfo = net_lm.getOutputsInfo();
@@ -108,26 +99,8 @@ index 0b7fc4e..f14ed44 100644
 +      oname_lm.push_back((++outputBlobsIt)->first); // output_segmentation
 +    }
 +
-+#endif
      for (auto& oname : oname_lm) {
 +        std::cerr << oname << std::endl;
          ie::DataPtr output_info = net_lm.getOutputsInfo()[oname];
          output_info->setPrecision(ie::Precision::FP32);
      }
-@@ -688,10 +727,15 @@ int main(int argc, char *argv[]) {
-             ireq_lm.Infer();                                                // Landmark detection
-             end = std::chrono::system_clock::now();
-             time_lm = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
--
-+#if 0
-             float* output_lm1 = ireq_lm.GetBlob(oname_lm[0])->buffer();     // ??
-             float* lm_score   = ireq_lm.GetBlob(oname_lm[1])->buffer();     // Landmark score (flag)
-             float* lm         = ireq_lm.GetBlob(oname_lm[2])->buffer();     // Landmarks
-+#else
-+            float* output_lm1 = ireq_lm.GetBlob(oname_lm[2])->buffer();     // ??
-+            float* lm_score   = ireq_lm.GetBlob(oname_lm[1])->buffer();     // Landmark score (flag)
-+            float* lm         = ireq_lm.GetBlob(oname_lm[0])->buffer();     // Landmarks
-+#endif
- 
-             landmarks[pose_id].score = *lm_score;
-             for (size_t i = 0; i < POSE_JOINT_NUM; i++) {
